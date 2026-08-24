@@ -4,6 +4,7 @@
  */
 
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { CRMProvider } from './store/crmStore';
 import { Layout } from './components/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { Campaigns } from './pages/Campaigns';
@@ -33,27 +34,29 @@ function PlaceholderPage({ title }: { title: string }) {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/lead-finder" element={<LeadFinder />} />
-          <Route path="/leads" element={<Leads />} />
-          <Route path="/leads/:id" element={<LeadDetail />} />
-          <Route path="/pipeline" element={<Pipeline />} />
-          <Route path="/ai-generator" element={<AIMessageGenerator />} />
-          <Route path="/ai-approval" element={<AIApprovalQueue />} />
-          <Route path="/automation" element={<AutomationBuilder />} />
-          <Route path="/campaigns" element={<Campaigns />} />
-          <Route path="/messages" element={<Messages />} />
-          <Route path="/tasks" element={<Tasks />} />
-          <Route path="/calendar" element={<Calendar />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/integrations" element={<Integrations />} />
-          <Route path="/team" element={<Team />} />
-          <Route path="/settings" element={<Settings />} />
-        </Routes>
-      </Layout>
-    </BrowserRouter>
+    <CRMProvider>
+      <BrowserRouter>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/lead-finder" element={<LeadFinder />} />
+            <Route path="/leads" element={<Leads />} />
+            <Route path="/leads/:id" element={<LeadDetail />} />
+            <Route path="/pipeline" element={<Pipeline />} />
+            <Route path="/ai-generator" element={<AIMessageGenerator />} />
+            <Route path="/ai-approval" element={<AIApprovalQueue />} />
+            <Route path="/automation" element={<AutomationBuilder />} />
+            <Route path="/campaigns" element={<Campaigns />} />
+            <Route path="/messages" element={<Messages />} />
+            <Route path="/tasks" element={<Tasks />} />
+            <Route path="/calendar" element={<Calendar />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/integrations" element={<Integrations />} />
+            <Route path="/team" element={<Team />} />
+            <Route path="/settings" element={<Settings />} />
+          </Routes>
+        </Layout>
+      </BrowserRouter>
+    </CRMProvider>
   );
 }
