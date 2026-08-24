@@ -4,7 +4,6 @@ import { Lead } from '../store/crmTypes';
 
 export type Channel = 'whatsapp' | 'instagram' | 'facebook' | 'gmail';
 
-// Keep legacy types/exports for compatibility
 export type ChannelType = Channel;
 export type ChannelState = 'connected' | 'available' | 'unavailable' | 'permission_required' | 'failed';
 
@@ -13,7 +12,7 @@ export interface ChannelAvailability {
   state: ChannelState;
 }
 
-export const DEFAULT_PRIORITY: ChannelType[] = ['whatsapp', 'instagram', 'facebook', 'gmail'];
+export const DEFAULT_PRIORITY: Channel[] = ['whatsapp', 'instagram', 'facebook', 'gmail'];
 
 export const getAvailableChannels = (lead: Lead): Channel[] => {
   const channels: Channel[] = [];

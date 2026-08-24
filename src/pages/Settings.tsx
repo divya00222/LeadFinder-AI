@@ -46,7 +46,7 @@ export function Settings() {
       {['Profile', 'Workspace', 'Notifications', 'Messaging', 'Channels', 'Security', 'Billing'].map(section => (
           <Card key={section}>
               <CardHeader><CardTitle>{section}</CardTitle></CardHeader>
-              <CardContent><p className="text-sm text-gray-500">{section} settings placeholder.</p></CardContent>
+              <CardContent><p className="text-sm text-gray-500">Configure your {section.toLowerCase()} preferences and system settings.</p></CardContent>
           </Card>
       ))}
     </div>

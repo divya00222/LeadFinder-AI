@@ -1,4 +1,42 @@
 
+export interface Note {
+  id: string;
+  content: string;
+  createdAt: string;
+  author: string;
+}
+
+export interface TaskItem {
+  id: string;
+  title: string;
+  dueDate: string; // YYYY-MM-DD
+  completed: boolean;
+  priority?: 'Low' | 'Medium' | 'High' | 'Urgent';
+  status?: 'Todo' | 'In Progress' | 'Completed';
+  leadId?: string;
+  leadName?: string;
+  notes?: string;
+}
+
+export interface Meeting {
+  id: string;
+  title: string;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:mm
+  leadId?: string;
+  leadName?: string;
+  description?: string;
+  location?: string;
+}
+
+export interface ActivityItem {
+  id: string;
+  title: string;
+  desc: string;
+  date: string;
+  type: string;
+}
+
 export interface Lead {
   id: string;
   companyName: string;
@@ -18,6 +56,9 @@ export interface Lead {
   status: 'new' | 'contacted' | 'replied' | 'qualified' | 'meeting' | 'proposal' | 'won' | 'lost';
   tags: string[];
   owner: string;
+  notes?: Note[];
+  tasks?: TaskItem[];
+  activities?: ActivityItem[];
   createdAt: string;
   updatedAt: string;
 }
@@ -49,3 +90,15 @@ export interface ApprovalRequest {
   reviewedBy?: string;
   reason?: string;
 }
+
+export interface Campaign {
+  id: string;
+  name: string;
+  audience: string;
+  channel: 'Gmail' | 'WhatsApp' | 'Instagram' | 'Facebook';
+  description: string;
+  leadIds: string[];
+  status: 'Active' | 'Paused' | 'Draft';
+  createdAt: string;
+}
+

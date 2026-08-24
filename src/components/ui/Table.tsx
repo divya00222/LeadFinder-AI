@@ -24,6 +24,6 @@ export function TableHead({ children, className = '' }: { children: React.ReactN
   return <th className={`px-6 py-4 font-semibold tracking-wider ${className}`}>{children}</th>;
 }
 
-export function TableCell({ children, className = '' }: { children: React.ReactNode, className?: string }) {
-  return <td className={`px-6 py-4 ${className}`}>{children}</td>;
+export function TableCell({ children, className = '', ...props }: { children: React.ReactNode, className?: string } & React.HTMLAttributes<HTMLTableCellElement>) {
+  return <td className={`px-6 py-4 ${className}`} {...props}>{children}</td>;
 }

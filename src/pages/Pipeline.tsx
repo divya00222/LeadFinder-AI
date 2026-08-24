@@ -1,71 +1,86 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { useCRM } from '../store/crmStore';
+import { Lead } from '../store/crmTypes';
 import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Select } from '../components/ui/Select';
 import { Avatar } from '../components/ui/Avatar';
 import { Badge } from '../components/ui/Badge';
+import { Modal } from '../components/ui/Modal';
+import { Toast, useToast } from '../components/ui/Toast';
 import { 
   Plus, MoreHorizontal, MessageCircle, Mail, Facebook, Instagram, 
-  Search, Filter, MapPin, Clock 
+  Search, Filter, MapPin, Clock, Edit, Trash2, ExternalLink
 } from 'lucide-react';
 
-type LeadStatus = 'New' | 'Contacted' | 'Replied' | 'Qualified' | 'Meeting' | 'Proposal' | 'Won' | 'Lost';
-
-type CardData = {
-  id: string;
-  status: LeadStatus;
-  company: string;
-  contact: string;
-  location: string;
-  score: number;
-  channel: 'whatsapp' | 'email' | 'instagram' | 'facebook';
-  lastActivity: string;
-  owner: { name: string; initials: string };
-  amount: number;
-};
-
-const MOCK_CARDS: CardData[] = [
-  { id: '1', status: 'New', company: 'Acme Corp', contact: 'John Smith', location: 'San Francisco, CA', score: 85, channel: 'email', lastActivity: '2h ago', owner: { name: 'Alice', initials: 'A' }, amount: 12000 },
-  { id: '2', status: 'New', company: 'Pied Piper', contact: 'Richard H.', location: 'Palo Alto, CA', score: 42, channel: 'whatsapp', lastActivity: '4h ago', owner: { name: 'Bob', initials: 'B' }, amount: 8000 },
-  { id: '3', status: 'Contacted', company: 'TechStart', contact: 'Sarah J.', location: 'New York, NY', score: 65, channel: 'whatsapp', lastActivity: '1d ago', owner: { name: 'Bob', initials: 'B' }, amount: 8500 },
-  { id: '4', status: 'Replied', company: 'Global Solutions', contact: 'Mike Ross', location: 'London, UK', score: 72, channel: 'email', lastActivity: '2d ago', owner: { name: 'Alice', initials: 'A' }, amount: 15000 },
-  { id: '5', status: 'Qualified', company: 'InnovateHub', contact: 'Emily Chen', location: 'Berlin, DE', score: 92, channel: 'instagram', lastActivity: '3d ago', owner: { name: 'Charlie', initials: 'C' }, amount: 24000 },
-  { id: '6', status: 'Meeting', company: 'CloudScale', contact: 'David Lee', location: 'Austin, TX', score: 88, channel: 'email', lastActivity: '5d ago', owner: { name: 'Bob', initials: 'B' }, amount: 18500 },
-  { id: '7', status: 'Proposal', company: 'NextGen', contact: 'Lisa Wong', location: 'Toronto, CA', score: 95, channel: 'facebook', lastActivity: '1w ago', owner: { name: 'Alice', initials: 'A' }, amount: 16000 },
-  { id: '8', status: 'Won', company: 'Stripe', contact: 'Patrick C.', location: 'San Francisco, CA', score: 99, channel: 'email', lastActivity: '2w ago', owner: { name: 'Charlie', initials: 'C' }, amount: 45000 },
-];
-
-const COLUMNS: { id: LeadStatus; label: string }[] = [
-  { id: 'New', label: 'New' },
-  { id: 'Contacted', label: 'Contacted' },
-  { id: 'Replied', label: 'Replied' },
-  { id: 'Qualified', label: 'Qualified' },
-  { id: 'Meeting', label: 'Meeting' },
-  { id: 'Proposal', label: 'Proposal' },
-  { id: 'Won', label: 'Won' },
-  { id: 'Lost', label: 'Lost' },
+const COLUMNS: { id: Lead['status']; label: string }[] = [
+  { id: 'new', label: 'New' },
+  { id: 'contacted', label: 'Contacted' },
+  { id: 'replied', label: 'Replied' },
+  { id: 'qualified', label: 'Qualified' },
+  { id: 'meeting', label: 'Meeting' },
+  { id: 'proposal', label: 'Proposal' },
+  { id: 'won', label: 'Won' },
+  { id: 'lost', label: 'Lost' },
 ];
 
 export function Pipeline() {
-  const [cards, setCards] = useState<CardData[]>(MOCK_CARDS);
-  const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
+  const { leads, updateLeadStatus, updateLead, deleteLead, addLead } = useCRM();
+  const { toasts, toast, removeToast } = useToast();
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
+
+  // Modals state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [leadToEdit, setLeadToEdit] = useState<Lead | null>(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  // Edit form state
+  const [editFormData, setEditFormData] = useState({
+    companyName: '',
+    contactName: '',
+    jobTitle: '',
+    industry: '',
+    location: '',
+    email: '',
+    phone: '',
+    leadScore: 75,
+    status: 'new' as Lead['status']
+  });
+
+  // Add form state
+  const [addFormData, setAddFormData] = useState({
+    companyName: '',
+    contactName: '',
+    jobTitle: '',
+    industry: 'Technology',
+    location: 'San Francisco, CA',
+    email: '',
+    phone: '',
+    leadScore: 80,
+    status: 'new' as Lead['status']
+  });
+
+  const filteredLeads = useMemo(() => {
+    return leads.filter(lead => {
+      const matchesSearch = 
+        lead.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        lead.contactName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        lead.industry.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        lead.location.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesSearch;
+    });
+  }, [leads, searchQuery]);
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
-    setDraggedCardId(id);
+    setDraggedLeadId(id);
     e.dataTransfer.effectAllowed = 'move';
-    // Small delay to allow the drag image to be captured before we might modify styles
-    setTimeout(() => {
-      if (e.target instanceof HTMLElement) {
-        e.target.classList.add('opacity-50');
-      }
-    }, 0);
+    e.dataTransfer.setData('text/plain', id);
   };
 
-  const handleDragEnd = (e: React.DragEvent) => {
-    if (e.target instanceof HTMLElement) {
-      e.target.classList.remove('opacity-50');
-    }
-    setDraggedCardId(null);
+  const handleDragEnd = () => {
+    setDraggedLeadId(null);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -73,26 +88,82 @@ export function Pipeline() {
     e.dataTransfer.dropEffect = 'move';
   };
 
-  const handleDrop = (e: React.DragEvent, status: LeadStatus) => {
+  const handleDrop = (e: React.DragEvent, targetStatus: Lead['status']) => {
     e.preventDefault();
-    if (draggedCardId) {
-      setCards(prev => prev.map(c => c.id === draggedCardId ? { ...c, status } : c));
+    const leadId = e.dataTransfer.getData('text/plain') || draggedLeadId;
+    if (leadId) {
+      const lead = leads.find(l => l.id === leadId);
+      if (lead && lead.status !== targetStatus) {
+        updateLeadStatus(leadId, targetStatus);
+        toast(`Moved ${lead.companyName} to ${targetStatus.toUpperCase()}`, 'success');
+      }
     }
-    setDraggedCardId(null);
+    setDraggedLeadId(null);
+  };
+
+  const handleStatusChangeClick = (leadId: string, newStatus: Lead['status']) => {
+    updateLeadStatus(leadId, newStatus);
+    toast(`Lead status updated to ${newStatus.toUpperCase()}`, 'success');
+  };
+
+  const handleOpenEdit = (lead: Lead) => {
+    setLeadToEdit(lead);
+    setEditFormData({
+      companyName: lead.companyName,
+      contactName: lead.contactName,
+      jobTitle: lead.jobTitle,
+      industry: lead.industry,
+      location: lead.location,
+      email: lead.email,
+      phone: lead.phone,
+      leadScore: lead.leadScore,
+      status: lead.status
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!leadToEdit) return;
+    updateLead(leadToEdit.id, editFormData);
+    setIsEditModalOpen(false);
+    toast('Lead updated successfully', 'success');
+  };
+
+  const handleSaveAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addFormData.companyName.trim()) {
+      toast('Company name is required', 'error');
+      return;
+    }
+    addLead({
+      ...addFormData,
+      website: '',
+      whatsapp: null,
+      facebook: null,
+      instagram: null,
+      source: 'Pipeline',
+      companySize: '11-50',
+      tags: [],
+      owner: 'Admin'
+    });
+    setIsAddModalOpen(false);
+    setAddFormData({
+      companyName: '',
+      contactName: '',
+      jobTitle: '',
+      industry: 'Technology',
+      location: 'San Francisco, CA',
+      email: '',
+      phone: '',
+      leadScore: 80,
+      status: 'new'
+    });
+    toast('Deal added successfully', 'success');
   };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount);
-  };
-
-  const getChannelIcon = (channel: string) => {
-    switch (channel) {
-      case 'whatsapp': return <MessageCircle size={14} className="text-[#25D366]" />;
-      case 'facebook': return <Facebook size={14} className="text-[#1877F2]" />;
-      case 'instagram': return <Instagram size={14} className="text-[#E4405F]" />;
-      case 'email':
-      default: return <Mail size={14} className="text-[#EA4335]" />;
-    }
   };
 
   const getScoreColor = (score: number) => {
@@ -103,31 +174,33 @@ export function Pipeline() {
 
   return (
     <div className="space-y-6 h-[calc(100vh-8rem)] flex flex-col">
+      {/* Toast container */}
+      <div className="fixed bottom-4 right-4 z-50 space-y-2">
+        {toasts.map(t => (
+          <Toast key={t.id} message={t.message} type={t.type} onClose={() => removeToast(t.id)} />
+        ))}
+      </div>
+
       {/* Header & Controls */}
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-brand-text">Pipeline</h1>
-          <p className="text-sm text-brand-muted mt-1">Track your deals through the sales process.</p>
+          <h1 className="text-2xl font-bold text-brand-text">Sales Pipeline</h1>
+          <p className="text-sm text-brand-muted mt-1">Drag and drop deals across stages or manage status in real time.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="relative">
+          <div className="relative w-full sm:w-64">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search size={16} className="text-gray-400" />
             </div>
             <input
               type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary"
-              placeholder="Search deals..."
+              placeholder="Search deals in pipeline..."
             />
           </div>
-          <Select>
-            <option>Sales Pipeline</option>
-            <option>Partner Pipeline</option>
-          </Select>
-          <Button variant="outline" className="bg-white">
-            <Filter size={16} className="mr-2" /> Filters
-          </Button>
-          <Button>
+          <Button onClick={() => setIsAddModalOpen(true)}>
             <Plus size={16} className="mr-2" /> Add Deal
           </Button>
         </div>
@@ -137,83 +210,113 @@ export function Pipeline() {
       <div className="flex-1 overflow-x-auto overflow-y-hidden pb-4">
         <div className="flex gap-4 h-full min-w-max items-start">
           {COLUMNS.map((column) => {
-            const columnCards = cards.filter(c => c.status === column.id);
-            const totalAmount = columnCards.reduce((sum, c) => sum + c.amount, 0);
+            const columnLeads = filteredLeads.filter(l => l.status === column.id);
+            // Estimate deal amount based on score if not set, or default
+            const totalAmount = columnLeads.reduce((sum, l) => sum + (l.leadScore * 250), 0);
 
             return (
               <div 
                 key={column.id} 
-                className="w-[320px] flex flex-col max-h-full bg-gray-50/50 rounded-xl border border-gray-100"
+                className="w-[300px] flex flex-col max-h-full bg-gray-50/70 rounded-xl border border-gray-200 shadow-sm"
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, column.id)}
               >
                 {/* Column Header */}
-                <div className="p-3 border-b border-gray-100">
+                <div className="p-3.5 border-b border-gray-200 bg-white rounded-t-xl">
                   <div className="flex items-center justify-between mb-1">
-                    <h3 className="font-semibold text-brand-text flex items-center gap-2">
+                    <h3 className="font-bold text-brand-text flex items-center gap-2 text-sm uppercase tracking-wide">
                       {column.label}
-                      <span className="bg-white border border-gray-200 text-brand-muted text-xs font-semibold px-2 py-0.5 rounded-full shadow-sm">
-                        {columnCards.length}
+                      <span className="bg-brand-primary/10 text-brand-primary text-xs font-semibold px-2 py-0.5 rounded-full">
+                        {columnLeads.length}
                       </span>
                     </h3>
-                    <button className="text-gray-400 hover:text-brand-text transition-colors p-1 rounded hover:bg-gray-200/50">
-                      <MoreHorizontal size={16} />
-                    </button>
                   </div>
-                  <div className="text-xs font-medium text-brand-muted">
-                    {formatCurrency(totalAmount)} potential
+                  <div className="text-xs font-semibold text-brand-muted">
+                    {formatCurrency(totalAmount)} est. value
                   </div>
                 </div>
                 
                 {/* Cards Container */}
                 <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
-                  {columnCards.map((card) => (
-                    <Card 
-                      key={card.id} 
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, card.id)}
-                      onDragEnd={handleDragEnd}
-                      className="cursor-grab active:cursor-grabbing border-gray-200 shadow-sm hover:border-brand-primary/40 hover:shadow-md transition-all bg-white"
-                    >
-                      <CardContent className="p-3.5">
-                        <div className="flex justify-between items-start mb-2 gap-2">
-                          <div>
-                            <h4 className="font-bold text-brand-text text-sm leading-tight">{card.company}</h4>
-                            <p className="text-xs font-medium text-gray-500 mt-0.5">{card.contact}</p>
-                          </div>
-                          <Badge variant="success" className="bg-green-50 text-green-700 border-green-100 shrink-0">
-                            {formatCurrency(card.amount)}
-                          </Badge>
-                        </div>
-                        
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mt-3 mb-4 text-xs text-brand-muted">
-                          <span className="flex items-center gap-1">
-                            <MapPin size={12} /> {card.location}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            {getChannelIcon(card.channel)} 
-                            <span className="capitalize">{card.channel}</span>
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center justify-between border-t border-gray-50 pt-3">
-                          <div className="flex items-center gap-2">
-                            <Avatar fallback={card.owner.initials} size="sm" className="bg-indigo-100 text-indigo-700 w-6 h-6 text-[10px]" />
-                            <span className="text-xs font-medium text-gray-600 flex items-center gap-1">
-                              <Clock size={12} /> {card.lastActivity}
-                            </span>
-                          </div>
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${getScoreColor(card.score)}`}>
-                            {card.score}
-                          </span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                  
-                  {/* Add Card Button */}
-                  <button className="w-full py-2 flex items-center justify-center gap-2 text-sm font-medium text-brand-muted hover:text-brand-primary hover:bg-white rounded-lg border border-dashed border-gray-300 transition-colors bg-gray-50">
-                    <Plus size={16} /> Add deal
+                  {columnLeads.length === 0 ? (
+                    <div className="py-8 text-center text-xs text-brand-muted border border-dashed border-gray-200 rounded-lg">
+                      No leads in {column.label}
+                    </div>
+                  ) : (
+                    columnLeads.map((lead) => {
+                      const estAmount = lead.leadScore * 250;
+                      return (
+                        <Card 
+                          key={lead.id} 
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, lead.id)}
+                          onDragEnd={handleDragEnd}
+                          className="cursor-grab active:cursor-grabbing border-gray-200 shadow-sm hover:border-brand-primary/50 hover:shadow-md transition-all bg-white"
+                        >
+                          <CardContent className="p-3.5 space-y-3">
+                            <div className="flex justify-between items-start gap-2">
+                              <div>
+                                <h4 className="font-bold text-brand-text text-sm leading-tight hover:text-brand-primary transition-colors">
+                                  <Link to={`/leads/${lead.id}`} className="flex items-center gap-1">
+                                    {lead.companyName} <ExternalLink size={12} className="text-gray-400" />
+                                  </Link>
+                                </h4>
+                                <p className="text-xs font-medium text-gray-500 mt-0.5">{lead.contactName || lead.jobTitle || 'Prospect'}</p>
+                              </div>
+                              <Badge className="bg-green-50 text-green-700 border-green-100 shrink-0 text-xs font-semibold">
+                                {formatCurrency(estAmount)}
+                              </Badge>
+                            </div>
+                            
+                            <div className="flex items-center justify-between text-xs text-brand-muted">
+                              <span className="flex items-center gap-1 truncate max-w-[160px]">
+                                <MapPin size={12} className="shrink-0" /> {lead.location}
+                              </span>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${getScoreColor(lead.leadScore)}`}>
+                                Score: {lead.leadScore}
+                              </span>
+                            </div>
+
+                            {/* Quick Action Bar */}
+                            <div className="flex items-center justify-between pt-2 border-t border-gray-100 text-xs">
+                              <select
+                                value={lead.status}
+                                onChange={(e) => handleStatusChangeClick(lead.id, e.target.value as Lead['status'])}
+                                className="text-[11px] font-medium bg-gray-50 border border-gray-200 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                              >
+                                {COLUMNS.map(col => (
+                                  <option key={col.id} value={col.id}>{col.label}</option>
+                                ))}
+                              </select>
+
+                              <div className="flex items-center gap-1">
+                                <button 
+                                  onClick={() => handleOpenEdit(lead)} 
+                                  className="p-1 text-gray-400 hover:text-brand-primary rounded hover:bg-gray-100 transition-colors"
+                                  title="Edit Lead"
+                                >
+                                  <Edit size={14} />
+                                </button>
+                                <button 
+                                  onClick={() => { deleteLead(lead.id); toast('Lead deleted', 'success'); }} 
+                                  className="p-1 text-gray-400 hover:text-brand-danger rounded hover:bg-gray-100 transition-colors"
+                                  title="Delete Lead"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })
+                  )}
+
+                  <button 
+                    onClick={() => { setAddFormData(prev => ({ ...prev, status: column.id })); setIsAddModalOpen(true); }}
+                    className="w-full py-2 flex items-center justify-center gap-2 text-xs font-semibold text-brand-muted hover:text-brand-primary hover:bg-white rounded-lg border border-dashed border-gray-300 transition-colors bg-gray-50/50"
+                  >
+                    <Plus size={14} /> Add deal to {column.label}
                   </button>
                 </div>
               </div>
@@ -221,7 +324,131 @@ export function Pipeline() {
           })}
         </div>
       </div>
-      
+
+      {/* Edit Modal */}
+      <Modal 
+        isOpen={isEditModalOpen} 
+        onClose={() => setIsEditModalOpen(false)} 
+        title="Edit Lead in Pipeline"
+        maxWidth="md"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveEdit}>Save Changes</Button>
+          </>
+        }
+      >
+        <form onSubmit={handleSaveEdit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-brand-text mb-1">Company Name *</label>
+            <input 
+              type="text"
+              required
+              value={editFormData.companyName}
+              onChange={e => setEditFormData({...editFormData, companyName: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-brand-text mb-1">Contact Name</label>
+            <input 
+              type="text"
+              value={editFormData.contactName}
+              onChange={e => setEditFormData({...editFormData, contactName: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-brand-text mb-1">Lead Score (0-100)</label>
+              <input 
+                type="number"
+                min="0"
+                max="100"
+                value={editFormData.leadScore}
+                onChange={e => setEditFormData({...editFormData, leadScore: parseInt(e.target.value) || 0})}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-brand-text mb-1">Status</label>
+              <select
+                value={editFormData.status}
+                onChange={e => setEditFormData({...editFormData, status: e.target.value as Lead['status']})}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+              >
+                {COLUMNS.map(col => (
+                  <option key={col.id} value={col.id}>{col.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Add Deal Modal */}
+      <Modal 
+        isOpen={isAddModalOpen} 
+        onClose={() => setIsAddModalOpen(false)} 
+        title="Add New Deal"
+        maxWidth="md"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveAdd}>Create Deal</Button>
+          </>
+        }
+      >
+        <form onSubmit={handleSaveAdd} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-brand-text mb-1">Company Name *</label>
+            <input 
+              type="text"
+              required
+              value={addFormData.companyName}
+              onChange={e => setAddFormData({...addFormData, companyName: e.target.value})}
+              placeholder="Acme Corp"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-brand-text mb-1">Contact Name</label>
+            <input 
+              type="text"
+              value={addFormData.contactName}
+              onChange={e => setAddFormData({...addFormData, contactName: e.target.value})}
+              placeholder="Jane Smith"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-brand-text mb-1">Lead Score</label>
+              <input 
+                type="number"
+                min="0"
+                max="100"
+                value={addFormData.leadScore}
+                onChange={e => setAddFormData({...addFormData, leadScore: parseInt(e.target.value) || 0})}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-brand-text mb-1">Stage</label>
+              <select
+                value={addFormData.status}
+                onChange={e => setAddFormData({...addFormData, status: e.target.value as Lead['status']})}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+              >
+                {COLUMNS.map(col => (
+                  <option key={col.id} value={col.id}>{col.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </form>
+      </Modal>
+
       <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
