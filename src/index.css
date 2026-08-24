@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-sidebar: #0B1026;
+  --color-brand-primary: #6D45E5;
+  --color-brand-secondary: #8B5CF6;
+  --color-brand-bg: #F7F8FC;
+  --color-brand-card: #FFFFFF;
+  --color-brand-text: #171A2B;
+  --color-brand-muted: #6B7280;
+  --color-brand-success: #22C55E;
+  --color-brand-warning: #F59E0B;
+  --color-brand-danger: #EF4444;
+}
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  body {
+    @apply bg-brand-bg text-brand-text antialiased;
+  }
+}

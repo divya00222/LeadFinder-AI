@@ -1,0 +1,6 @@
+{
+  "name": "LeadFinder AI",
+  "description": "AI-Powered Lead Finder CRM platform for agencies and sales teams.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
