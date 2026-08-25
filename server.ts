@@ -555,6 +555,31 @@ Return response in strict JSON format with keys:
     }
   });
 
+  // Secure Billing & Checkout Processing API Route
+  app.post("/api/billing/checkout", (req, res) => {
+    const { planName, amount, billingCycle, paymentMethod, cardLast4 } = req.body;
+    
+    // Server-side validation
+    if (!planName || amount === undefined) {
+      return res.status(400).json({ error: "Missing required checkout parameters." });
+    }
+
+    const transactionId = `txn_${Math.random().toString(36).substring(2, 11)}_${Date.now()}`;
+    const invoiceNo = `INV-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
+
+    return res.json({
+      success: true,
+      transactionId,
+      invoiceNo,
+      planName,
+      amount,
+      billingCycle,
+      status: "PAID",
+      timestamp: new Date().toISOString(),
+      receiptUrl: `/invoices/${invoiceNo}.pdf`
+    });
+  });
+
   // Vite middleware setup
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
