@@ -14,7 +14,8 @@ import {
   UsersRound, 
   Settings,
   X,
-  Zap
+  Zap,
+  Sparkles
 } from 'lucide-react';
 import { Avatar } from './ui/Avatar';
 
@@ -24,6 +25,7 @@ const navItems = [
   { name: 'Leads', path: '/leads', icon: Users },
   { name: 'Pipeline', path: '/pipeline', icon: Filter },
   { name: 'AI Approval', path: '/ai-approval', icon: CheckSquare },
+  { name: 'AI Intelligence', path: '/intelligence', icon: Sparkles },
   { name: 'Campaigns', path: '/campaigns', icon: Megaphone },
   { name: 'Messages', path: '/messages', icon: MessageSquare },
   { name: 'Tasks & Follow-ups', path: '/tasks', icon: CheckCircle2 },

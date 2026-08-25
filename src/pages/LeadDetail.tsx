@@ -13,7 +13,8 @@ import {
   Building2, MapPin, Globe, Edit3, Plus, MoreHorizontal, 
   MessageCircle, Mail, BrainCircuit, Target, CheckCircle2, 
   Search, ArrowLeft, Briefcase, Users, DollarSign, Share2, 
-  Phone, MessageSquare, Facebook, Instagram, Trash2, Calendar, CheckSquare, Square
+  Phone, MessageSquare, Facebook, Instagram, Trash2, Calendar, CheckSquare, Square,
+  RefreshCw, Sparkles
 } from 'lucide-react';
 import { getChannelAvailability, getRecommendation, DEFAULT_PRIORITY, Channel } from '../lib/channelUtils';
 import { ChannelAvailability } from '../components/channels/ChannelAvailability';
@@ -60,6 +61,61 @@ export function LeadDetail() {
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDueDate, setTaskDueDate] = useState('Tomorrow');
+  const [researching, setResearching] = useState(false);
+
+  const handleResearchLead = async (force = false) => {
+    if (!force && lead.researchedAt && lead.companyDescription) {
+      toast('Using cached AI research data', 'info');
+      return;
+    }
+
+    setResearching(true);
+    try {
+      const res = await fetch('/api/ai/research-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leadId: lead.id,
+          companyName: lead.companyName,
+          category: lead.industry || lead.category,
+          location: lead.location,
+          website: lead.website,
+          phone: lead.phone,
+          rating: lead.rating,
+          reviewCount: lead.reviewCount,
+          businessStatus: lead.businessStatus,
+          source: lead.source
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'AI research failed');
+      }
+
+      updateLead(lead.id, {
+        companyDescription: data.companyDescription,
+        services: data.services,
+        targetCustomers: data.targetCustomers,
+        businessStrengths: data.businessStrengths,
+        businessWeaknesses: data.businessWeaknesses,
+        onlinePresence: data.onlinePresence,
+        websiteQuality: data.websiteQuality,
+        socialPresence: data.socialPresence,
+        possiblePainPoints: data.possiblePainPoints,
+        salesOpportunity: data.salesOpportunity,
+        researchSummary: data.researchSummary,
+        researchedAt: data.researchedAt
+      });
+
+      toast(`Successfully completed AI business research for ${lead.companyName}!`, 'success');
+    } catch (err: any) {
+      console.error(err);
+      toast(err.message || 'AI research failed. Try again.', 'error');
+    } finally {
+      setResearching(false);
+    }
+  };
 
   const availabilities = useMemo(() => lead ? getChannelAvailability(lead) : [], [lead]);
   const recommendation = useMemo(() => lead ? getRecommendation(lead) : { type: 'Email', reason: 'Standard outreach' }, [lead]);
@@ -267,50 +323,152 @@ export function LeadDetail() {
             {/* Left Column */}
             <div className="lg:col-span-2 space-y-6">
               
-              {/* AI Insights */}
-              <Card className="bg-gradient-to-br from-indigo-50 to-white border-indigo-100">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-indigo-900 flex items-center gap-2 text-lg">
-                    <BrainCircuit size={20} className="text-indigo-500" />
-                    AI Insights & Profile
+              {/* AI Business Intelligence */}
+              <Card className="bg-gradient-to-br from-indigo-50/70 via-white to-white border-indigo-100 shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between pb-3">
+                  <CardTitle className="text-indigo-950 flex items-center gap-2 text-lg">
+                    <BrainCircuit size={20} className="text-indigo-600" />
+                    AI Business Intelligence
                   </CardTitle>
+                  <Button 
+                    size="sm" 
+                    disabled={researching} 
+                    onClick={() => handleResearchLead(!lead.researchedAt)}
+                    className="gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+                  >
+                    {researching ? <RefreshCw className="animate-spin" size={14} /> : <Sparkles size={14} />}
+                    {researching ? 'Researching...' : lead.researchedAt ? 'Re-research Company' : 'Research Company'}
+                  </Button>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h4 className="text-xs font-semibold text-indigo-800 uppercase tracking-wider mb-1">Company Summary</h4>
-                    <p className="text-sm text-gray-700 leading-relaxed">
-                      {lead.companyName} is operating in the {lead.industry} industry based in {lead.location}. Source: {lead.source}. Team size is estimated at {lead.companySize} employees. Strong prospect for targeted CRM and sales automation workflows.
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                    <div>
-                      <h4 className="text-xs font-semibold text-indigo-800 uppercase tracking-wider mb-2 flex items-center gap-1.5"><Target size={14} /> Key Focus Areas</h4>
-                      <ul className="space-y-1.5">
-                        <li className="text-sm text-gray-700 flex items-start gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 shrink-0"></span>
-                          Outbound lead generation scaling
-                        </li>
-                        <li className="text-sm text-gray-700 flex items-start gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 shrink-0"></span>
-                          Multi-channel engagement tracking
-                        </li>
-                      </ul>
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-semibold text-indigo-800 uppercase tracking-wider mb-2 flex items-center gap-1.5"><CheckCircle2 size={14} /> Recommended Action</h4>
-                      <p className="text-sm text-gray-700">
-                        Initiate personalized outreach via {recommendation.type} highlighting automated conversion workflows.
-                      </p>
-                    </div>
-                  </div>
-                  {lead.tags && lead.tags.length > 0 && (
-                    <div className="pt-2 border-t border-indigo-100">
-                      <h4 className="text-xs font-semibold text-indigo-800 uppercase tracking-wider mb-2">Tags</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {lead.tags.map((tag, idx) => (
-                          <Badge key={idx} variant="neutral" className="bg-white border-indigo-200 text-indigo-700">#{tag}</Badge>
-                        ))}
+                <CardContent className="space-y-6">
+                  {lead.companyDescription ? (
+                    <div className="space-y-6">
+                      {/* Company Summary */}
+                      <div>
+                        <h4 className="text-xs font-bold text-indigo-900 uppercase tracking-wider mb-1">Company Summary</h4>
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                          {lead.companyDescription}
+                        </p>
                       </div>
+
+                      {/* Services & Target Customers */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-white/80 p-3.5 rounded-lg border border-indigo-50">
+                          <h4 className="text-xs font-bold text-indigo-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <Briefcase size={14} className="text-indigo-600" /> Services & Products
+                          </h4>
+                          <div className="flex flex-wrap gap-1.5">
+                            {lead.services && lead.services.length > 0 ? (
+                              lead.services.map((svc, i) => (
+                                <span key={i} className="text-xs bg-indigo-50 text-indigo-800 px-2 py-0.5 rounded font-medium">
+                                  {svc}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-xs text-gray-400">Unknown</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="bg-white/80 p-3.5 rounded-lg border border-indigo-50">
+                          <h4 className="text-xs font-bold text-indigo-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <Users size={14} className="text-indigo-600" /> Target Customers
+                          </h4>
+                          <div className="flex flex-wrap gap-1.5">
+                            {lead.targetCustomers && lead.targetCustomers.length > 0 ? (
+                              lead.targetCustomers.map((cust, i) => (
+                                <span key={i} className="text-xs bg-teal-50 text-teal-800 px-2 py-0.5 rounded font-medium">
+                                  {cust}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-xs text-gray-400">Unknown</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Strengths & Weaknesses */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-emerald-50/55 p-3.5 rounded-lg border border-emerald-100">
+                          <h4 className="text-xs font-bold text-emerald-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <CheckCircle2 size={14} className="text-emerald-600" /> Business Strengths
+                          </h4>
+                          <ul className="space-y-1">
+                            {lead.businessStrengths && lead.businessStrengths.length > 0 ? (
+                              lead.businessStrengths.map((str, i) => (
+                                <li key={i} className="text-xs text-emerald-900 flex items-start gap-1.5">
+                                  <span className="text-emerald-600 font-bold">•</span> {str}
+                                </li>
+                              ))
+                            ) : (
+                              <li className="text-xs text-gray-400">Unknown</li>
+                            )}
+                          </ul>
+                        </div>
+
+                        <div className="bg-amber-50/55 p-3.5 rounded-lg border border-amber-100">
+                          <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <Target size={14} className="text-amber-600" /> Weaknesses & Gaps
+                          </h4>
+                          <ul className="space-y-1">
+                            {lead.businessWeaknesses && lead.businessWeaknesses.length > 0 ? (
+                              lead.businessWeaknesses.map((weak, i) => (
+                                <li key={i} className="text-xs text-amber-900 flex items-start gap-1.5">
+                                  <span className="text-amber-600 font-bold">•</span> {weak}
+                                </li>
+                              ))
+                            ) : (
+                              <li className="text-xs text-gray-400">Unknown</li>
+                            )}
+                          </ul>
+                        </div>
+                      </div>
+
+                      {/* Online Presence & Website Quality */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                        <div className="bg-white/80 p-3.5 rounded-lg border border-indigo-50">
+                          <span className="font-bold text-indigo-900 uppercase tracking-wider block mb-1">Online & Social Presence</span>
+                          <p className="text-gray-700">{lead.onlinePresence || 'Unknown'}</p>
+                          {lead.websiteQuality && <p className="text-gray-500 mt-1">Website Quality: {lead.websiteQuality}</p>}
+                        </div>
+                        <div className="bg-white/80 p-3.5 rounded-lg border border-indigo-50">
+                          <span className="font-bold text-indigo-900 uppercase tracking-wider block mb-1">Possible Pain Points</span>
+                          <ul className="space-y-0.5">
+                            {lead.possiblePainPoints && lead.possiblePainPoints.length > 0 ? (
+                              lead.possiblePainPoints.map((p, i) => (
+                                <li key={i} className="text-gray-700">• {p}</li>
+                              ))
+                            ) : (
+                              <li>Unknown</li>
+                            )}
+                          </ul>
+                        </div>
+                      </div>
+
+                      {/* Sales Opportunity */}
+                      <div className="bg-indigo-900 text-white p-4 rounded-lg shadow-sm space-y-1">
+                        <h4 className="text-xs font-bold text-indigo-200 uppercase tracking-wider flex items-center gap-1.5">
+                          <Sparkles size={14} className="text-amber-300" /> Sales Opportunity & Angle
+                        </h4>
+                        <p className="text-sm text-indigo-50 leading-relaxed">
+                          {lead.salesOpportunity || 'Standard outreach.'}
+                        </p>
+                      </div>
+
+                      {lead.researchedAt && (
+                        <div className="text-[11px] text-brand-muted text-right">
+                          Researched at: {new Date(lead.researchedAt).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 space-y-3">
+                      <BrainCircuit className="mx-auto text-indigo-300 animate-pulse" size={36} />
+                      <p className="text-sm font-semibold text-brand-text">No deep AI research compiled yet.</p>
+                      <p className="text-xs text-brand-muted max-w-md mx-auto">
+                        Click "Research Company" above to run server-side website analysis and Gemini AI market intelligence.
+                      </p>
                     </div>
                   )}
                 </CardContent>
